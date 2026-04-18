@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDV System - Gestão de Vendas</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fb;
+            color: #1a1f36;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100%;
+            background: #1a1f36;
+            color: #fff;
+            padding: 24px 0;
+            z-index: 100;
+        }
+        
+        .logo {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 24px;
+        }
+        
+        .logo h2 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .logo p {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+        
+        .nav-item {
+            padding: 12px 24px;
+            margin: 4px 12px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .nav-item.active {
+            background: #667eea;
+        }
+        
+        .nav-icon {
+            width: 20px;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            margin-left: 260px;
+            padding: 24px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1f36;
+        }
+        
+        .status {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .card-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        
+        .card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1f36;
+        }
+        
+        .panel {
+            display: none;
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .panel.active {
+            display: block;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #475569;
+        }
+        
+        .form-group input, .form-group select {
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary { background: #667eea; color: #fff; }
+        .btn-success { background: #10b981; color: #fff; }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-warning { background: #f59e0b; color: #fff; }
+        .btn-secondary { background: #64748b; color: #fff; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        th {
+            font-weight: 600;
+            font-size: 13px;
+            color: #64748b;
+            background: #f8fafc;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .badge-aguardando { background: #fef3c7; color: #92400e; }
+        .badge-autorizado { background: #dbeafe; color: #1e40af; }
+        .badge-pago { background: #d1fae5; color: #065f46; }
+        .badge-retirado { background: #e0e7ff; color: #3730a3; }
+        .badge-cancelado { background: #fee2e2; color: #991b1b; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .close-modal {
+            cursor: pointer;
+            font-size: 24px;
+            color: #94a3b8;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1100;
+            display: none;
+        }
+        
+        .toast-success { background: #10b981; }
+        .toast-error { background: #ef4444; }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .estoque-baixo {
+            background: #fef3c7;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <h2>⚡ PDV System</h2>
+            <p>Gestão de Vendas</p>
+        </div>
+        <div class="nav-item active" data-panel="dashboard">
+            <span class="nav-icon">📊</span>
+            <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-panel="vendas">
+            <span class="nav-icon">💰</span>
+            <span>Realizar Venda</span>
+        </div>
+        <div class="nav-item" data-panel="estoque">
+            <span class="nav-icon">📦</span>
+            <span>Estoque</span>
+        </div>
+        <div class="nav-item" data-panel="clientes">
+            <span class="nav-icon">👥</span>
+            <span>Clientes</span>
+        </div>
+        <div class="nav-item" data-panel="pedidos">
+            <span class="nav-icon">📋</span>
+            <span>Pedidos</span>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="header">
+            <h1 id="pageTitle">Dashboard</h1>
+            <div class="status">✅ Sistema Online</div>
+        </div>
+        
+        <div id="dashboard" class="panel active">
+            <div class="cards-grid">
+                <div class="card"><div class="card-title">💰 Vendas Hoje</div><div class="card-value" id="vendasHoje">R$ 0,00</div></div>
+                <div class="card"><div class="card-title">📊 Total Pedidos</div><div class="card-value" id="totalPedidos">0</div></div>
+                <div class="card"><div class="card-title">👥 Clientes</div><div class="card-value" id="totalClientes">0</div></div>
+                <div class="card"><div class="card-title">⚠️ Estoque Baixo</div><div class="card-value" id="estoqueBaixo">0</div></div>
+            </div>
+            <h3>📋 Últimos Pedidos</h3>
+            <div class="table-container" id="ultimosPedidos"></div>
+        </div>
+        
+        <div id="vendas" class="panel">
+            <h3>🛒 Nova Venda</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Cliente</label>
+                    <select id="clienteVenda"></select>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Produto</label>
+                    <input type="text" id="buscaProduto" placeholder="SKU ou Nome">
+                </div>
+                <div class="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" id="qtdProduto" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" id="btnAdicionar">➕ Adicionar</button>
+                </div>
+            </div>
+            <h4>🛍️ Carrinho</h4>
+            <div class="table-container" id="carrinhoLista"></div>
+            <div style="text-align: right; margin-top: 16px;">
+                <strong>Total: R$ <span id="carrinhoTotal" style="font-size: 20px; color: #667eea;">0,00</span></strong>
+            </div>
+            <button class="btn btn-success" id="btnFinalizar" style="margin-top: 20px; width: 100%;">✅ Finalizar Venda</button>
+        </div>
+        
+        <div id="estoque" class="panel">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h3>📦 Estoque</h3>
+                <button class="btn btn-primary" id="btnNovoProduto">➕ Novo Produto</button>
+            </div>
+            <div class="table-container" id="listaProdutos"></div>
+        </div>
+        
+        <div id="clientes" class="panel">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h3>👥 Clientes</h3>
+                <button class="btn btn-primary" id="btnNovoCliente">➕ Novo Cliente</button>
+            </div>
+            <div class="table-container" id="listaClientes"></div>
+        </div>
+        
+        <div id="pedidos" class="panel">
+            <h3>📋 Pedidos</h3>
+            <div class="table-container" id="listaPedidos"></div>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast"></div>
+    
+    <!-- Modal Produto -->
+    <div id="modalProduto" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalProdutoTitle">Novo Produto</h3>
+                <span class="close-modal" id="closeProdutoModal">&times;</span>
+            </div>
+            <input type="hidden" id="produtoId">
+            <div class="form-group"><label>SKU</label><input type="text" id="produtoSku" placeholder="Ex: PROD-001"></div>
+            <div class="form-group"><label>Nome</label><input type="text" id="produtoNome"></div>
+            <div class="form-group"><label>Preço</label><input type="number" id="produtoPreco" step="0.01"></div>
+            <div class="form-group"><label>Quantidade</label><input type="number" id="produtoQtd"></div>
+            <div class="form-group"><label>Qtd Mínima</label><input type="number" id="produtoMinima" value="5"></div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn btn-success" id="salvarProduto">Salvar</button>
+                <button class="btn btn-secondary" id="cancelarProduto">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Cliente -->
+    <div id="modalCliente" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalClienteTitle">Novo Cliente</h3>
+                <span class="close-modal" id="closeClienteModal">&times;</span>
+            </div>
+            <input type="hidden" id="clienteId">
+            <div class="form-group"><label>Nome</label><input type="text" id="clienteNome"></div>
+            <div class="form-group"><label>CPF</label><input type="text" id="clienteCpf"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="clienteEmail"></div>
+            <div class="form-group"><label>Telefone</label><input type="text" id="clienteTelefone"></div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn btn-success" id="salvarCliente">Salvar</button>
+                <button class="btn btn-secondary" id="cancelarCliente">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Status -->
+    <div id="modalStatus" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Alterar Status</h3>
+                <span class="close-modal" id="closeStatusModal">&times;</span>
+            </div>
+            <input type="hidden" id="statusPedidoId">
+            <div class="form-group">
+                <label>Status</label>
+                <select id="novoStatus">
+                    <option value="aguardando">Aguardando</option>
+                    <option value="autorizado">Autorizado</option>
+                    <option value="pago">Pago</option>
+                    <option value="retirado">Retirado</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="btn btn-success" id="confirmarStatus">Confirmar</button>
+                <button class="btn btn-secondary" id="cancelarStatus">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://opzttjnchqwmvnuwbwey.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_h3kCSfFBGMeUUl6NCi6xZg_O1sTdHBP';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let carrinhoItens = [];
+        
+        function mostrarToast(texto, tipo = 'success') {
+            const toast = document.getElementById('toast');
+            toast.className = `toast toast-${tipo}`;
+            toast.innerHTML = texto;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+        
+        // Navegação
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const panelId = this.getAttribute('data-panel');
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById(panelId).classList.add('active');
+                
+                const titles = { dashboard: 'Dashboard', vendas: 'Realizar Venda', estoque: 'Estoque', clientes: 'Clientes', pedidos: 'Pedidos' };
+                document.getElementById('pageTitle').innerHTML = titles[panelId];
+                
+                if (panelId === 'dashboard') carregarDashboard();
+                if (panelId === 'estoque') carregarProdutos();
+                if (panelId === 'clientes') carregarClientes();
+                if (panelId === 'pedidos') carregarPedidos();
+                if (panelId === 'vendas') carregarSelectClientes();
+            });
+        });
+        
+        // Dashboard
+        async function carregarDashboard() {
+            const { data: pedidos } = await supabaseClient.from('pedidos').select('*');
+            const { data: clientes } = await supabaseClient.from('clientes').select('*');
+            const { data: produtos } = await supabaseClient.from('produtos').select('*');
+            
+            document.getElementById('totalPedidos').innerHTML = pedidos?.length || 0;
+            document.getElementById('totalClientes').innerHTML = clientes?.length || 0;
+            document.getElementById('estoqueBaixo').innerHTML = produtos?.filter(p => p.quantidade <= p.qtd_minima).length || 0;
+            
+            const hoje = new Date().toISOString().split('T')[0];
+            const vendasHoje = pedidos?.filter(p => p.data_pedido?.split('T')[0] === hoje && p.status === 'pago').reduce((s, p) => s + p.total, 0) || 0;
+            document.getElementById('vendasHoje').innerHTML = `R$ ${vendasHoje.toFixed(2)}`;
+            
+            let html = '<table><th>Pedido</th><th>Cliente</th><th>Data</th><th>Total</th><th>Status</th></tr>';
+            const ultimos = pedidos?.slice(-5).reverse() || [];
+            for (const p of ultimos) {
+                const { data: c } = await supabaseClient.from('clientes').select('nome').eq('id', p.cliente_id).single();
+                html += `<tr>
+                    <td>${p.numero_pedido}</td>
+                    <td>${c?.nome || '-'}</td>
+                    <td>${new Date(p.data_pedido).toLocaleDateString()}</td>
+                    <td>R$ ${p.total.toFixed(2)}</td>
+                    <td><span class="badge badge-${p.status}">${p.status}</span></td>
+                </tr>`;
+            }
+            html += '</table>';
+            document.getElementById('ultimosPedidos').innerHTML = html;
+        }
+        
+        // Produtos
+        async function carregarProdutos() {
+            const { data } = await supabaseClient.from('produtos').select('*').order('nome');
+            let html = '<table><th>SKU</th><th>Produto</th><th>Preço</th><th>Qtd</th><th>Mínimo</th><th>Status</th><th>Ações</th></tr>';
+            data?.forEach(p => {
+                const status = p.quantidade <= p.qtd_minima ? '⚠️ Baixo' : '✅ Normal';
+                const rowClass = p.quantidade <= p.qtd_minima ? 'estoque-baixo' : '';
+                html += `<tr class="${rowClass}">
+                    <td>${p.sku}</td>
+                    <td>${p.nome}</td>
+                    <td>R$ ${p.preco.toFixed(2)}</td>
+                    <td>${p.quantidade}</td>
+                    <td>${p.qtd_minima}</td>
+                    <td>${status}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-warning btn-sm" onclick="editarProduto(${p.id})">✏️</button>
+                        <button class="btn btn-danger btn-sm" onclick="excluirProduto(${p.id})">🗑️</button>
+                        <button class="btn btn-primary btn-sm" onclick="darBaixa(${p.id}, ${p.quantidade})">📉</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</table>';
+            document.getElementById('listaProdutos').innerHTML = html;
+        }
+        
+        window.editarProduto = async function(id) {
+            const { data } = await supabaseClient.from('produtos').select('*').eq('id', id).single();
+            document.getElementById('modalProdutoTitle').innerHTML = '✏️ Editar Produto';
+            document.getElementById('produtoId').value = data.id;
+            document.getElementById('produtoSku').value = data.sku;
+            document.getElementById('produtoNome').value = data.nome;
+            document.getElementById('produtoPreco').value = data.preco;
+            document.getElementById('produtoQtd').value = data.quantidade;
+            document.getElementById('produtoMinima').value = data.qtd_minima;
+            document.getElementById('modalProduto').style.display = 'flex';
+        };
+        
+        window.excluirProduto = async function(id) {
+            if (confirm('Tem certeza?')) {
+                await supabaseClient.from('produtos').delete().eq('id', id);
+                mostrarToast('Produto excluído!');
+                carregarProdutos();
+                carregarDashboard();
+            }
+        };
+        
+        window.darBaixa = async function(id, qtdAtual) {
+            const qtd = prompt(`Quantidade atual: ${qtdAtual}\nDigite a quantidade para dar baixa:`);
+            if (qtd && qtd > 0 && qtd <= qtdAtual) {
+                await supabaseClient.from('produtos').update({ quantidade: qtdAtual - parseInt(qtd) }).eq('id', id);
+                mostrarToast(`Baixa de ${qtd} unidades realizada!`);
+                carregarProdutos();
+                carregarDashboard();
+            }
+        };
+        
+        // Clientes
+        async function carregarClientes() {
+            const { data } = await supabaseClient.from('clientes').select('*').order('nome');
+            let html = '</table><th>Nome</th><th>CPF</th><th>Email</th><th>Telefone</th><th>Ações</th></tr>';
+            data?.forEach(c => {
+                html += `<tr>
+                    <td>${c.nome}</td>
+                    <td>${c.cpf || '-'}</td>
+                    <td>${c.email || '-'}</td>
+                    <td>${c.telefone || '-'}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-warning btn-sm" onclick="editarCliente(${c.id})">✏️</button>
+                        <button class="btn btn-danger btn-sm" onclick="excluirCliente(${c.id})">🗑️</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</table>';
+            document.getElementById('listaClientes').innerHTML = html;
+        }
+        
+        window.editarCliente = async function(id) {
+            const { data } = await supabaseClient.from('clientes').select('*').eq('id', id).single();
+            document.getElementById('modalClienteTitle').innerHTML = '✏️ Editar Cliente';
+            document.getElementById('clienteId').value = data.id;
+            document.getElementById('clienteNome').value = data.nome;
+            document.getElementById('clienteCpf').value = data.cpf || '';
+            document.getElementById('clienteEmail').value = data.email || '';
+            document.getElementById('clienteTelefone').value = data.telefone || '';
+            document.getElementById('modalCliente').style.display = 'flex';
+        };
+        
+        window.excluirCliente = async function(id) {
+            if (confirm('Tem certeza?')) {
+                await supabaseClient.from('clientes').delete().eq('id', id);
+                mostrarToast('Cliente excluído!');
+                carregarClientes();
+                carregarDashboard();
+                carregarSelectClientes();
+            }
+        };
+        
+        // Pedidos
+        async function carregarPedidos() {
+            const { data } = await supabaseClient.from('pedidos').select('*').order('id', { ascending: false });
+            let html = '<table><th>Pedido</th><th>Cliente</th><th>Data</th><th>Total</th><th>Status</th><th>Ações</th></tr>';
+            for (const p of data || []) {
+                const { data: c } = await supabaseClient.from('clientes').select('nome').eq('id', p.cliente_id).single();
+                html += `<tr>
+                    <td>${p.numero_pedido}</td>
+                    <td>${c?.nome || '-'}</td>
+                    <td>${new Date(p.data_pedido).toLocaleDateString()}</td>
+                    <td>R$ ${p.total.toFixed(2)}</td>
+                    <td><span class="badge badge-${p.status}">${p.status}</span></td>
+                    <td><button class="btn btn-primary btn-sm" onclick="abrirModalStatus(${p.id})">Alterar</button></td>
+                </tr>`;
+            }
+            html += '</table>';
+            document.getElementById('listaPedidos').innerHTML = html;
+        }
+        
+        window.abrirModalStatus = function(id) {
+            document.getElementById('statusPedidoId').value = id;
+            document.getElementById('modalStatus').style.display = 'flex';
+        };
+        
+        // Vendas
+        async function carregarSelectClientes() {
+            const { data } = await supabaseClient.from('clientes').select('id, nome');
+            const select = document.getElementById('clienteVenda');
+            select.innerHTML = '<option value="">Selecione</option>';
+            data?.forEach(c => select.innerHTML += `<option value="${c.id}">${c.nome}</option>`);
+        }
+        
+        document.getElementById('btnAdicionar').addEventListener('click', async () => {
+            const busca = document.getElementById('buscaProduto').value;
+            const qtd = parseInt(document.getElementById('qtdProduto').value);
+            if (!busca) { mostrarToast('Digite o produto!', 'error'); return; }
+            
+            const { data } = await supabaseClient.from('produtos').select('*').or(`sku.ilike.%${busca}%,nome.ilike.%${busca}%`).limit(1);
+            if (!data || data.length === 0) { mostrarToast('Produto não encontrado!', 'error'); return; }
+            
+            const produto = data[0];
+            if (produto.quantidade < qtd) { mostrarToast(`Estoque: ${produto.quantidade}`, 'error'); return; }
+            
+            carrinhoItens.push({ id: produto.id, nome: produto.nome, qtd, preco: produto.preco, subtotal: produto.preco * qtd });
+            atualizarCarrinho();
+            document.getElementById('buscaProduto').value = '';
+        });
+        
+        function atualizarCarrinho() {
+            let html = '<tr><th>Produto</th><th>Qtd</th><th>Preço</th><th>Subtotal</th><th>Ação</th></tr>';
+            let total = 0;
+            carrinhoItens.forEach((item, i) => {
+                total += item.subtotal;
+                html += `<tr>
+                    <td>${item.nome}</td>
+                    <td>${item.qtd}</td>
+                    <td>R$ ${item.preco.toFixed(2)}</td>
+                    <td>R$ ${item.subtotal.toFixed(2)}</td>
+                    <td><button class="btn btn-danger btn-sm" onclick="removerItem(${i})">X</button></td>
+                </tr>`;
+            });
+            html += '</table>';
+            document.getElementById('carrinhoLista').innerHTML = html;
+            document.getElementById('carrinhoTotal').innerHTML = total.toFixed(2);
+        }
+        
+        window.removerItem = (i) => { carrinhoItens.splice(i, 1); atualizarCarrinho(); };
+        
+        document.getElementById('btnFinalizar').addEventListener('click', async () => {
+            const clienteId = document.getElementById('clienteVenda').value;
+            if (!clienteId) { mostrarToast('Selecione o cliente!', 'error'); return; }
+            if (carrinhoItens.length === 0) { mostrarToast('Carrinho vazio!', 'error'); return; }
+            
+            const total = carrinhoItens.reduce((s, i) => s + i.subtotal, 0);
+            const numPedido = `PED-${Date.now()}`;
+            
+            const { data: pedido } = await supabaseClient.from('pedidos').insert({
+                numero_pedido: numPedido, cliente_id: clienteId, total: total, status: 'aguardando'
+            }).select().single();
+            
+            if (!pedido) { mostrarToast('Erro!', 'error'); return; }
+            
+            for (const item of carrinhoItens) {
+                await supabaseClient.from('pedido_itens').insert({
+                    pedido_id: pedido.id, produto_id: item.id, sku: `SKU-${item.id}`,
+                    produto_nome: item.nome, quantidade: item.qtd, preco_unitario: item.preco, subtotal: item.subtotal
+                });
+                const { data: prod } = await supabaseClient.from('produtos').select('quantidade').eq('id', item.id).single();
+                await supabaseClient.from('produtos').update({ quantidade: prod.quantidade - item.qtd }).eq('id', item.id);
+            }
+            
+            mostrarToast(`Venda finalizada! Pedido: ${numPedido}`);
+            carrinhoItens = [];
+            atualizarCarrinho();
+            carregarDashboard();
+        });
+        
+        // Modais
+        document.getElementById('btnNovoProduto').addEventListener('click', () => {
+            document.getElementById('modalProdutoTitle').innerHTML = '➕ Novo Produto';
+            document.getElementById('produtoId').value = '';
+            document.getElementById('produtoSku').value = '';
+            document.getElementById('produtoNome').value = '';
+            document.getElementById('produtoPreco').value = '';
+            document.getElementById('produtoQtd').value = '';
+            document.getElementById('produtoMinima').value = '5';
+            document.getElementById('modalProduto').style.display = 'flex';
+        });
+        
+        document.getElementById('btnNovoCliente').addEventListener('click', () => {
+            document.getElementById('modalClienteTitle').innerHTML = '➕ Novo Cliente';
+            document.getElementById('clienteId').value = '';
+            document.getElementById('clienteNome').value = '';
+            document.getElementById('clienteCpf').value = '';
+            document.getElementById('clienteEmail').value = '';
+            document.getElementById('clienteTelefone').value = '';
+            document.getElementById('modalCliente').style.display = 'flex';
+        });
+        
+        document.getElementById('salvarProduto').addEventListener('click', async () => {
+            const id = document.getElementById('produtoId').value;
+            const sku = document.getElementById('produtoSku').value;
+            const nome = document.getElementById('produtoNome').value;
+            const preco = parseFloat(document.getElementById('produtoPreco').value);
+            const quantidade = parseInt(document.getElementById('produtoQtd').value);
+            const qtd_minima = parseInt(document.getElementById('produtoMinima').value);
+            
+            if (!sku || !nome) { mostrarToast('Preencha SKU e Nome!', 'error'); return; }
+            
+            if (id) {
+                await supabaseClient.from('produtos').update({ sku, nome, preco, quantidade, qtd_minima }).eq('id', id);
+                mostrarToast('Produto atualizado!');
+            } else {
+                await supabaseClient.from('produtos').insert({ sku, nome, preco, quantidade, qtd_minima });
+                mostrarToast('Produto cadastrado!');
+            }
+            document.getElementById('modalProduto').style.display = 'none';
+            carregarProdutos();
+            carregarDashboard();
+        });
+        
+        document.getElementById('salvarCliente').addEventListener('click', async () => {
+            const id = document.getElementById('clienteId').value;
+            const nome = document.getElementById('clienteNome').value;
+            const cpf = document.getElementById('clienteCpf').value;
+            const email = document.getElementById('clienteEmail').value;
+            const telefone = document.getElementById('clienteTelefone').value;
+            
+            if (!nome) { mostrarToast('Preencha o nome!', 'error'); return; }
+            
+            if (id) {
+                await supabaseClient.from('clientes').update({ nome, cpf, email, telefone }).eq('id', id);
+                mostrarToast('Cliente atualizado!');
+            } else {
+                await supabaseClient.from('clientes').insert({ nome, cpf, email, telefone });
+                mostrarToast('Cliente cadastrado!');
+            }
+            document.getElementById('modalCliente').style.display = 'none';
+            carregarClientes();
+            carregarDashboard();
+            carregarSelectClientes();
+        });
+        
+        document.getElementById('confirmarStatus').addEventListener('click', async () => {
+            const id = document.getElementById('statusPedidoId').value;
+            const status = document.getElementById('novoStatus').value;
+            await supabaseClient.from('pedidos').update({ status }).eq('id', id);
+            mostrarToast('Status atualizado!');
+            document.getElementById('modalStatus').style.display = 'none';
+            carregarPedidos();
+            carregarDashboard();
+        });
+        
+        // Fechar modais
+        const fecharModais = () => {
+            document.getElementById('modalProduto').style.display = 'none';
+            document.getElementById('modalCliente').style.display = 'none';
+            document.getElementById('modalStatus').style.display = 'none';
+        };
+        
+        document.getElementById('closeProdutoModal').addEventListener('click', () => document.getElementById('modalProduto').style.display = 'none');
+        document.getElementById('cancelarProduto').addEventListener('click', () => document.getElementById('modalProduto').style.display = 'none');
+        document.getElementById('closeClienteModal').addEventListener('click', () => document.getElementById('modalCliente').style.display = 'none');
+        document.getElementById('cancelarCliente').addEventListener('click', () => document.getElementById('modalCliente').style.display = 'none');
+        document.getElementById('closeStatusModal').addEventListener('click', () => document.getElementById('modalStatus').style.display = 'none');
+        document.getElementById('cancelarStatus').addEventListener('click', () => document.getElementById('modalStatus').style.display = 'none');
+        
+        // Iniciar
+        carregarDashboard();
+        carregarSelectClientes();
+    </script>
+</body>
+</html>
